@@ -1,3 +1,85 @@
+import kagglehub
+
+# Download latest version of the dataset (preserve existing behavior)
+path = kagglehub.dataset_download("cherngs/heart-disease-cleveland-uci")
+
+print("Path to dataset files:", path)
+
+
+# --- New: Streamlit radar chart UI for patient risk profile ---
+try:
+    import streamlit as st
+    import plotly.graph_objects as go
+except Exception:
+    # if Streamlit or plotly aren't installed, don't break the original behavior
+    st = None
+
+
+def make_radar_figure(labels, values, title="Health Risk Radar"):
+    # Ensure the radar closes (first value repeated at end)
+    vals = list(values)
+    if len(vals) > 0:
+        vals.append(vals[0])
+    labs = list(labels)
+    if len(labs) > 0:
+        labs.append(labs[0])
+
+    fig = go.Figure(
+        data=[
+            go.Scatterpolar(r=vals, theta=labs, fill='toself', name='Risk Profile', marker=dict(color='crimson'))
+        ]
+    )
+    fig.update_layout(
+        polar=dict(radialaxis=dict(visible=True, range=[0, 100])),
+        showlegend=False,
+        title=title
+    )
+    return fig
+
+
+def streamlit_radar_ui():
+    if st is None:
+        print("Streamlit or plotly not available; radar UI skipped.")
+        return
+
+    st.set_page_config(page_title="Health Risk Radar", layout="centered")
+    st.title("Health Risk Radar — Patient Risk Dashboard")
+
+    st.markdown("Visualize the patient's risk profile across key metrics.")
+
+    with st.sidebar:
+        st.header("Patient Metrics (0-100)")
+        age_score = st.slider("Age risk score", 0, 100, 40)
+        cholesterol_score = st.slider("Cholesterol risk score", 0, 100, 50)
+        ecg_score = st.slider("ECG abnormality score", 0, 100, 20)
+        bp_score = st.slider("Blood pressure risk score", 0, 100, 60)
+        # model predicted probability as a decimal 0.0-1.0 but visualize as 0-100
+        model_prob = st.slider("Model predicted probability", 0.0, 1.0, 0.27, step=0.01)
+
+    labels = [
+        "Age risk",
+        "Cholesterol risk",
+        "ECG abnormality",
+        "Blood pressure",
+        "Model probability"
+    ]
+
+    values = [age_score, cholesterol_score, ecg_score, bp_score, model_prob * 100]
+
+    st.subheader("Patient Radar Chart")
+    fig = make_radar_figure(labels, values)
+    st.plotly_chart(fig, use_container_width=True)
+
+    st.markdown("**Interpretation:** Higher values indicate higher relative risk for that axis.\n\nUse the sidebar sliders to simulate or inspect a patient's profile.")
+
+
+if __name__ == "__main__":
+    # If user runs this file directly, run the Streamlit UI when possible.
+    try:
+        streamlit_radar_ui()
+    except Exception as e:
+        # keep original behavior intact; print error but don't raise
+        print("Streamlit radar UI failed to start:", e)
 # streamlit_upgrade.py
 import streamlit as st
 import joblib
